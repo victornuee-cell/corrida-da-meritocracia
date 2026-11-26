@@ -80,17 +80,46 @@ io.on('connection', socket => {
   socket.on('roll', () => {
     const room=roomBySocket(socket); if(!room || room.status!=='playing') return;
     const p=room.players.get(socket.id); if(!p || p.rolled || p.finished) return;
-    const die=1+Math.floor(Math.random()*6);
-    let pool=events.filter(e => e.types.includes(p.profile.name));
-    if(Math.random()<0.52 || pool.length===0) pool=events.filter(e=>e.types.length===0);
-    if(pool.length===0) pool=events;
-    const ev=pool[Math.floor(Math.random()*pool.length)];
-    const mod=ev.types.includes(p.profile.name) ? ev.move : 0;
-    const movement=Math.max(0,die+mod);
-    p.position=Math.min(FINISH, p.position+movement);
-    p.rolled=true; p.finished=p.position>=FINISH;
-    const text=`${p.name}: dado ${die} · ${ev.title} (${mod>0?'+':''}${mod}) · avançou ${movement} casas.`;
-    room.log.unshift({round:room.round,text});
+    
+const die=1+Math.floor(Math.random()*6);
+
+let pool=events.filter(e => e.types.includes(p.profile.name));
+
+if(Math.random()<0.52 || pool.length===0) {
+  pool=events.filter(e=>e.types.length===0);
+}
+
+if(pool.length===0) pool=events;
+
+const ev=pool[Math.floor(Math.random()*pool.length)];
+const mod=ev.types.includes(p.profile.name) ? ev.move : 0;
+
+// Calcula o deslocamento, permitindo avançar ou retroceder.
+const movement=die+mod;
+const previousPosition=p.position;
+
+// Impede que o jogador fique antes da largada ou ultrapasse a chegada.
+p.position=Math.max(0,Math.min(FINISH,p.position+movement));
+
+const actualMovement=p.position-previousPosition;
+
+let movementText;
+
+if(actualMovement>0) {
+  movementText=`avançou ${actualMovement} casa(s)`;
+} else if(actualMovement<0) {
+  movementText=`retrocedeu ${Math.abs(actualMovement)} casa(s)`;
+} else {
+  movementText='permaneceu na mesma posição';
+}
+
+p.rolled=true;
+p.finished=p.position>=FINISH;
+
+const text=`${p.name}: dado ${die} · ${ev.title} (${mod>0?'+':''}${mod}) · ${movementText}.`;
+
+room.log.unshift({round:room.round,text});
+
     finishIfNeeded(room);
     if(room.status==='playing' && [...room.players.values()].every(x=>x.rolled || x.finished)) {
       room.round++; for(const x of room.players.values()) if(!x.finished) x.rolled=false;
