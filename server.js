@@ -94,13 +94,15 @@ if(pool.length===0) pool=events;
 const ev=pool[Math.floor(Math.random()*pool.length)];
 const mod=ev.types.includes(p.profile.name) ? ev.move : 0;
 
-// Calcula o deslocamento, permitindo avançar ou retroceder.
-const movement=die+mod;
-const previousPosition=p.position;
+let movement = die;
 
-// Impede que o jogador fique antes da largada ou ultrapasse a chegada.
-p.position=Math.max(0,Math.min(FINISH,p.position+movement));
+if (mod < 0) {
+  movement = -die;
+} else if (mod > 0) {
+  movement = die;
+}
 
+p.position = Math.max(0, Math.min(FINISH, p.position + movement));
 const actualMovement=p.position-previousPosition;
 
 let movementText;
