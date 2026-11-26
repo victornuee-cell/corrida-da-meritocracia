@@ -1,4 +1,3 @@
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -128,7 +127,7 @@ function publicState(room) {
       finished: p.finished,
       profile: room.status === 'finished' ? p.profile : null
     })),
-    log: room.log.slice(-15),
+    log: room.log.slice(0, 15),
     winner: room.winner || null
   };
 }
@@ -146,7 +145,9 @@ function emitError(socket, message) {
 }
 
 function finishIfNeeded(room) {
-  const winners = [...room.players.values()].filter(p => p.position >= FINISH);
+  const winners = [...room.players.values()].filter(
+    p => p.position >= FINISH
+  );
 
   if (winners.length) {
     room.status = 'finished';
@@ -213,11 +214,17 @@ io.on('connection', socket => {
     }
 
     if (room.status !== 'lobby') {
-      return emitError(socket, 'Essa corrida já começou. Crie outra sala ou aguarde a próxima.');
+      return emitError(
+        socket,
+        'Essa corrida já começou. Crie outra sala ou aguarde a próxima.'
+      );
     }
 
     if (room.players.size >= 120) {
-      return emitError(socket, 'A sala atingiu a capacidade de 120 participantes.');
+      return emitError(
+        socket,
+        'A sala atingiu a capacidade de 120 participantes.'
+      );
     }
 
     const player = {
@@ -250,11 +257,17 @@ io.on('connection', socket => {
     if (!room) return;
 
     if (socket.id !== room.hostId) {
-      return emitError(socket, 'Somente quem criou a sala pode iniciar.');
+      return emitError(
+        socket,
+        'Somente quem criou a sala pode iniciar.'
+      );
     }
 
     if (room.players.size < 2) {
-      return emitError(socket, 'Esperem pelo menos mais uma pessoa entrar para iniciar.');
+      return emitError(
+        socket,
+        'Esperem pelo menos mais uma pessoa entrar para iniciar.'
+      );
     }
 
     room.status = 'playing';
@@ -269,14 +282,18 @@ io.on('connection', socket => {
       )[0] || profiles[Math.floor(Math.random() * profiles.length)];
 
       p.profile = prof;
-      p.start = Math.floor(Math.random() * 6);
-      p.position = p.start;
+
+      // TODOS COMEÇAM NA CASA ZERO
+      p.start = 0;
+      p.position = 0;
+
       p.rolled = false;
+      p.finished = false;
     }
 
     room.log.unshift({
       round: 1,
-      text: '🚦 A corrida começou! Cada pessoa larga de uma posição diferente.'
+      text: '🚦 A corrida começou! Todos começam na casa 0.'
     });
 
     broadcast(room);
@@ -292,11 +309,13 @@ io.on('connection', socket => {
 
     if (!p || p.rolled || p.finished) return;
 
-    // Sorteia o dado
+    // SORTEIA O DADO
     const die = 1 + Math.floor(Math.random() * 6);
 
-    // Seleciona os eventos relacionados ao perfil
-    let pool = events.filter(e => e.types.includes(p.profile.name));
+    // SELECIONA OS EVENTOS RELACIONADOS AO PERFIL
+    let pool = events.filter(
+      e => e.types.includes(p.profile.name)
+    );
 
     if (Math.random() < 0.52 || pool.length === 0) {
       pool = events.filter(e => e.types.length === 0);
@@ -308,30 +327,23 @@ io.on('connection', socket => {
 
     const ev = pool[Math.floor(Math.random() * pool.length)];
 
-    // Identifica se o evento é positivo, negativo ou neutro
+    // IDENTIFICA O TIPO DO EVENTO
     const mod = ev.types.includes(p.profile.name) ? ev.move : 0;
 
-    // Positivo: avança o valor do dado
-    // Negativo: retrocede o valor do dado
-    // Neutro: avança normalmente
-    let movement;
+    // EVENTO NEGATIVO: RETROCEDE O VALOR DO DADO
+    // EVENTO POSITIVO OU NEUTRO: AVANÇA O VALOR DO DADO
+    const movement = mod < 0 ? -die : die;
 
-    if (mod < 0) {
-      movement = -die;
-    } else {
-      movement = die;
-    }
-
-    // Guarda a posição anterior
+    // GUARDA A POSIÇÃO ANTERIOR
     const previousPosition = p.position;
 
-    // Atualiza a posição respeitando os limites do tabuleiro
+    // ATUALIZA A POSIÇÃO
     p.position = Math.max(
       0,
-      Math.min(FINISH, p.position + movement)
+      Math.min(FINISH, previousPosition + movement)
     );
 
-    // Calcula o deslocamento real
+    // CALCULA QUANTAS CASAS REALMENTE FORAM PERCORRIDAS
     const actualMovement = p.position - previousPosition;
 
     let movementText;
@@ -356,10 +368,12 @@ io.on('connection', socket => {
 
     finishIfNeeded(room);
 
-    // Verifica se todos já jogaram na rodada
+    // VERIFICA SE TODOS JÁ JOGARAM NA RODADA
     if (
       room.status === 'playing' &&
-      [...room.players.values()].every(x => x.rolled || x.finished)
+      [...room.players.values()].every(
+        x => x.rolled || x.finished
+      )
     ) {
       room.round++;
 
