@@ -103,7 +103,8 @@ if (mod < 0) {
 }
 
 p.position = Math.max(0, Math.min(FINISH, p.position + movement));
-const actualMovement=p.position-previousPosition;
+const direction = movement > 0 ? 'avançou' : movement < 0 ? 'retrocedeu' : 'permaneceu';
+const text = `${p.name}: dado ${die} · ${ev.title} · ${direction} ${Math.abs(movement)} casa(s).`;
 
 let movementText;
 
