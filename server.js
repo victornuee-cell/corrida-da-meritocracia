@@ -118,7 +118,8 @@ if(actualMovement>0) {
 p.rolled=true;
 p.finished=p.position>=FINISH;
 
-const text=`${p.name}: dado ${die} · ${ev.title} (${mod>0?'+':''}${mod}) · ${movementText}.`;
+const direction = movement > 0 ? 'avançou' : movement < 0 ? 'retrocedeu' : 'permaneceu';
+const text=`${p.name}: dado ${die} · ${ev.title} · ${direction} ${Math.abs(movement)} casa(s).`;
 
 room.log.unshift({round:room.round,text});
 
